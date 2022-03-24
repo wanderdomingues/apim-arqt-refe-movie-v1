@@ -1,0 +1,230 @@
+openapi: "3.0.3"
+info:
+  version: 1.0.0
+  title: Movie API
+  description: Add description Movie API
+  
+servers:
+  - url: https://api-dev.agro-artemis.com.br/v1
+    description: Development server 
+  - url: https://api-test.agro-artemis.com.br/v1
+    description: Integrated Test server
+  - url: https://api-stagging.agro-artemis.com.br/v1
+    description: Stagging server
+  - url: https://api.agro-artemis.com.br/v1
+    description: Production server
+
+paths:
+  /movies:
+    get:
+      summary: List all movies
+      security:
+        - JWTAuth: []
+      operationId: listMovies
+      tags:
+        - movies
+      parameters:
+        - name: limit
+          in: query
+          description: How many items to return at one time (max 100)
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: OK
+          headers:
+            x-next:
+              schema:
+                type: string
+              description: link of next result page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movies"
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Access token does not have the required scope
+        '404':
+          description: Not Found  
+        '500':
+          description: Internal Server Error
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+    post:
+      summary: Insert a new Movie
+      security:
+        - OpenID: [write]   # Use OAuth with a different scope
+      operationId: insertMovies
+      tags:
+        - movies
+      requestBody:
+        description: Movie structure
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movie'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movies"
+        '400':
+          description: Bad Request
+        '401':
+          description: Not authenticated
+        '403':
+          description: Access token does not have the required scope
+        '500':
+          description: Internal Server Error
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+                
+  /movies/{movieId}:
+    get:
+      summary: Info for a specific movie
+      security:
+        - OpenID: [openid, movie.read]
+      operationId: showMovieById
+      tags:
+        - movies
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          description: The id of the pet to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Movies"
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Access token does not have the required scope
+        '404':
+          description: Not Found  
+        '500':
+          description: Internal Server Error
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+
+    put:
+      summary: Update a specific movie
+      security:
+        - OpenID: [openid, movie.write]
+      operationId: updateMovieById
+      tags:
+        - movies
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          description: The id of the pet to retrieve
+          schema:
+            type: string
+      requestBody:
+        description: Movie structure
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movie'
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+        '403':
+          description: Access token does not have the required scope
+        '500':
+          description: Internal Server Error
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Errors"
+components:
+  schemas:
+    Movie:
+      type: object
+      required:
+        - id
+        - title
+        - releaseDate
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        duration:
+          type: integer
+        releaseDate:
+          type: string
+          format: date
+    Movies:
+      type: array
+      items:
+        $ref: "#/components/schemas/Movie"
+    Error:
+      type: object
+      required:
+        - reason
+        - message
+      properties:
+        reason:
+          type: string
+        message:
+          type: string
+    Errors:
+      type: object
+      required:
+        - Error
+        - internalCode
+      properties:
+        Errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Error"
+        internalCode:
+          type: string
+  securitySchemes:
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: 'JWT'
+    JWEAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: 'JWE'  
+    OpenID:
+      type: openIdConnect
+      openIdConnectUrl: https://api.agro-artemis.com.br/v1/.well-known/openid-configuration
